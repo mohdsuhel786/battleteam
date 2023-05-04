@@ -28,6 +28,8 @@ public class UserDto {
     @NotNull(message = "password")
     @Pattern(regexp = "(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}", message = "{user.password.invalid}")
     private String password;
+    private String userImageName;
+    private Long bgmiId;
 
     public Long getId() {
         return id;
@@ -65,6 +67,22 @@ public class UserDto {
     //  @JsonIgnore
     public String getPassword() {
         return password;
+    }
+
+    public String getUserImageName() {
+        return userImageName;
+    }
+
+    public void setUserImageName(String userImageName) {
+        this.userImageName = userImageName;
+    }
+
+    public Long getBgmiId() {
+        return bgmiId;
+    }
+
+    public void setBgmiId(Long bgmiId) {
+        this.bgmiId = bgmiId;
     }
 
 }

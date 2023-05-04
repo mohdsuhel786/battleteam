@@ -23,6 +23,7 @@ public class Team {
 
     @Column(nullable = false, unique = true)
     private String teamName;
+    private String teamImageName;
     @ManyToOne
     private User captain;
 
@@ -60,6 +61,14 @@ public class Team {
 
     public void setCaptain(User captain) {
         this.captain = captain;
+    }
+
+    public String getTeamImageName() {
+        return teamImageName;
+    }
+
+    public void setTeamImageName(String teamImageName) {
+        this.teamImageName = teamImageName;
     }
 
     // other fields and getters/setters

@@ -1,5 +1,8 @@
 package com.battle.serviceImpl;
 
+import com.battle.auth.AuthenticationResponse;
+import com.battle.entities.ERole;
+import com.battle.entities.Role;
 import com.battle.entities.TeamMember;
 import com.battle.entities.Tournament;
 import com.battle.entities.User;
@@ -7,18 +10,23 @@ import com.battle.exception.BattleException;
 import com.battle.payloads.TeamMemberDto;
 import com.battle.payloads.UserDto;
 import com.battle.payloads.UserUpdateDto;
+import com.battle.repositories.RoleRepository;
 import com.battle.repositories.TeamMemberRepository;
 import com.battle.repositories.TournamentRepository;
 import com.battle.repositories.UserRepository;
+import com.battle.services.JwtService;
+import com.battle.services.MyUserDetails;
 import com.battle.services.TeamMemberService;
 import com.battle.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -35,7 +43,15 @@ public class UserServiceImpl implements UserService {
 	@Autowired
 	private TeamMemberService teamMemberService;
 
-	public UserDto registerUser(UserDto user) throws BattleException {
+	@Autowired
+	private JwtService jwtService;
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	private RoleRepository roleRepository;
+
+	public AuthenticationResponse registerUser(UserDto user) throws BattleException {
 
 		String email = user.getEmail();
 		Optional<User> getEmail = userRepository.findByEmail(email);
@@ -45,46 +61,52 @@ public class UserServiceImpl implements UserService {
 		User user1 = new User();
 		user1.setName(user.getName());
 		user1.setEmail(email);
-		user1.setPassword(user.getPassword());
+		user.setPassword(passwordEncoder.encode(user.getPassword()));
 		User savedUser = userRepository.save(user1);
-		user.setId(savedUser.getUserId());
-		return user;
+		//	user.setId(savedUser.getUserId());
+		//	System.out.println(savedUser.getPassword());
+		MyUserDetails myUserDetails = MyUserDetails.build(savedUser);
+		String jwtToken = jwtService.generateToken(myUserDetails);
+		AuthenticationResponse authenticationResponse = new AuthenticationResponse();
+		authenticationResponse.setToken(jwtToken);
+		return authenticationResponse;
+		//	return user;
 	}
   
 
 	@Override
-	public UserDto findUserByEmail(String email) throws BattleException {
+	public UserUpdateDto findUserByEmail(String email) throws BattleException {
 		Optional<User> optionalUser = userRepository.findByEmail(email);
 		if (!optionalUser.isPresent()) {
 			throw new BattleException("User id Not Found!");
 		}
 		User user = optionalUser.get();
-		UserDto userDto = userToUserDto(user);
-		return userDto;
+		UserUpdateDto userUpdateDto = userToUpdatesUserDto(user);
+		return userUpdateDto;
 	}
 
 	@Override
-	public List<UserDto> getUsers() {
+	public List<UserUpdateDto> getUsers() throws BattleException {
 		List<User> users = userRepository.findAll();
-		List<UserDto> userDto = new ArrayList<>();
+		List<UserUpdateDto> userUpdateDto = new ArrayList<>();
 		for (User u : users) {
-			UserDto userDtos = userToUserDto(u);
-			userDto.add(userDtos);
+			UserUpdateDto userDtos = userToUpdatesUserDto(u);
+			userUpdateDto.add(userDtos);
 		}
-		return userDto;
+		return userUpdateDto;
 
 	}
 
 
 	@Override
-	public UserDto getUserById(Long id) throws BattleException {
+	public UserUpdateDto getUserById(Long id) throws BattleException {
 		Optional<User> optionalUser = userRepository.findById(id);
 		if (!optionalUser.isPresent()) {
 			throw new BattleException("User id Not Found!");
 		}
 		User user = optionalUser.get();
-		UserDto userDto = userToUserDto(user);
-		return userDto;
+		UserUpdateDto userUpdateDto = userToUpdatesUserDto(user);
+		return userUpdateDto;
 	}
 
 
@@ -108,6 +130,13 @@ public class UserServiceImpl implements UserService {
 			teamMemberService.deleteTeamMember(teamMember.getTeamMemberId(), userId);
 		}
 
+		for (Role r : user.getRoles()) {
+			if (r.getName().equals(ERole.ROLE_ADMIN)) {
+				throw new BattleException("ADMIN CAN'T DELETED!");
+			}
+			System.out.println(r.getName());
+		}
+		user.setRoles(null);
 		// Delete the user entity
 		userRepository.delete(user);
 	}
@@ -131,8 +160,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 
-	@Override
-	public UserDto updateUser(UserUpdateDto userDto, Long userId) throws BattleException {
+	public UserUpdateDto updateUser(UserUpdateDto userDto, Long userId) throws BattleException {
 		Optional<User> optionalUser = userRepository.findById(userId);
 		if (!optionalUser.isPresent()) {
 			throw new BattleException("User id Not Found!");
@@ -141,8 +169,22 @@ public class UserServiceImpl implements UserService {
 		User user = optionalUser.get();
 		user.setEmail(userDto.getEmail());
 		user.setName(userDto.getName());
-		UserDto userDtos = userToUserDto(user);
+		user.setUserImageName(userDto.getUserImageName());
+		user.setBgmiId(userDto.getBgmiId());
+		UserUpdateDto userDtos = userToUpdatesUserDto(user);
 		return userDtos;
+	}
+
+	public UserUpdateDto userToUpdatesUserDto(User user) throws BattleException {
+
+
+		UserUpdateDto updatedUser = new UserUpdateDto();
+		updatedUser.setEmail(user.getEmail());
+		updatedUser.setName(user.getName());
+		updatedUser.setUserId(user.getUserId());
+		updatedUser.setUserImageName(user.getUserImageName());
+		updatedUser.setBgmiId(user.getBgmiId());
+		return updatedUser;
 	}
 
 
