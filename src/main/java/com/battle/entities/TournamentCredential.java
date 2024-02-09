@@ -39,5 +39,5 @@ public class TournamentCredential {
     private int groupNo;
     @ManyToMany
     private List<TeamCredential> teamCredentials;
-    private Boolean checkIn;
+   
 }
